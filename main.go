@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -24,6 +23,7 @@ import (
 	"golang.org/x/net/http2"
 
 	"github.com/fatih/color"
+	"github.com/spf13/pflag"
 )
 
 const (
@@ -54,7 +54,7 @@ var (
 	followRedirects bool
 	onlyHeader      bool
 	insecure        bool
-	httpHeaders     headers
+	httpHeaders     []string
 	saveOutput      bool
 	outputFile      string
 	showVersion     bool
@@ -68,19 +68,19 @@ var (
 const maxRedirects = 10
 
 func init() {
-	flag.StringVar(&httpMethod, "X", "GET", "HTTP method to use")
-	flag.StringVar(&postBody, "d", "", "the body of a POST or PUT request")
-	flag.BoolVar(&followRedirects, "L", false, "follow 30x redirects")
-	flag.BoolVar(&onlyHeader, "I", false, "don't read body of request")
-	flag.BoolVar(&insecure, "k", false, "allow insecure SSL connections")
-	flag.Var(&httpHeaders, "H", "HTTP Header(s) to set. Can be used multiple times. -H 'Accept:...' -H 'Range:....'")
-	flag.BoolVar(&saveOutput, "O", false, "Save body as remote filename")
-	flag.StringVar(&outputFile, "o", "", "output file for body")
-	flag.BoolVar(&showVersion, "v", false, "print version number")
+	pflag.StringVar(&httpMethod, "X", "GET", "HTTP method to use")
+	pflag.StringVar(&postBody, "d", "", "the body of a POST or PUT request")
+	pflag.BoolVar(&followRedirects, "L", false, "follow 30x redirects")
+	pflag.BoolVar(&onlyHeader, "I", false, "don't read body of request")
+	pflag.BoolVar(&insecure, "k", false, "allow insecure SSL connections")
+	pflag.StringSliceVar(&httpHeaders, "H", []string{}, "HTTP Header(s) to set. Can be used multiple times. -H 'Accept:...' -H 'Range:....'")
+	pflag.BoolVar(&saveOutput, "O", false, "Save body as remote filename")
+	pflag.StringVar(&outputFile, "o", "", "output file for body")
+	pflag.BoolVar(&showVersion, "v", false, "print version number")
 
-	flag.Usage = func() {
+	pflag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "usage: %s URL\n", os.Args[0])
-		flag.PrintDefaults()
+		pflag.PrintDefaults()
 		os.Exit(2)
 	}
 }
@@ -94,16 +94,16 @@ func grayscale(code color.Attribute) func(string, ...interface{}) string {
 }
 
 func main() {
-	flag.Parse()
+	pflag.Parse()
 
 	if showVersion {
 		fmt.Printf("%s %s (runtime: %s)\n", os.Args[0], version, runtime.Version())
 		os.Exit(0)
 	}
 
-	args := flag.Args()
+	args := pflag.Args()
 	if len(args) != 1 {
-		flag.Usage()
+		pflag.Usage()
 	}
 
 	if (httpMethod == "POST" || httpMethod == "PUT") && postBody == "" {
@@ -419,19 +419,6 @@ func readResponseBody(req *http.Request, resp *http.Response) string {
 }
 
 type headers []string
-
-func (h headers) String() string {
-	var o []string
-	for _, v := range h {
-		o = append(o, "-H "+v)
-	}
-	return strings.Join(o, " ")
-}
-
-func (h *headers) Set(v string) error {
-	*h = append(*h, v)
-	return nil
-}
 
 func (h headers) Len() int      { return len(h) }
 func (h headers) Swap(i, j int) { h[i], h[j] = h[j], h[i] }
